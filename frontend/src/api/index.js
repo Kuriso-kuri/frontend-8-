@@ -1,0 +1,140 @@
+import axios from 'axios';
+
+const apiClient = axios.create({
+    baseURL: 'http://localhost:3000/api',
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    }
+});
+
+apiClient.interceptors.request.use(
+    (config) => {
+        const accessToken = localStorage.getItem('accessToken');
+        if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+apiClient.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+        
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+            
+            const refreshToken = localStorage.getItem('refreshToken');
+            
+            if (!refreshToken) {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
+            
+            try {
+                const response = await axios.post('http://localhost:3000/api/auth/refresh', {
+                    refreshToken
+                });
+                
+                const { accessToken, refreshToken: newRefreshToken } = response.data;
+                
+                localStorage.setItem('accessToken', accessToken);
+                localStorage.setItem('refreshToken', newRefreshToken);
+                
+                originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+                return apiClient(originalRequest);
+            } catch (refreshError) {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('refreshToken');
+                window.location.href = '/login';
+                return Promise.reject(refreshError);
+            }
+        }
+        
+        return Promise.reject(error);
+    }
+);
+
+export const api = {
+    register: async (userData) => {
+        const response = await apiClient.post('/auth/register', userData);
+        return response.data;
+    },
+    
+    login: async (credentials) => {
+        const response = await apiClient.post('/auth/login', credentials);
+        if (response.data.accessToken && response.data.refreshToken) {
+            localStorage.setItem('accessToken', response.data.accessToken);
+            localStorage.setItem('refreshToken', response.data.refreshToken);
+            localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        return response.data;
+    },
+    
+    getMe: async () => {
+        const response = await apiClient.get('/auth/me');
+        return response.data;
+    },
+    
+    logout: () => {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    },
+    
+    getCurrentUser: () => {
+        const userStr = localStorage.getItem('user');
+        return userStr ? JSON.parse(userStr) : null;
+    },
+
+    getUsers: async () => {
+        const response = await apiClient.get('/users');
+        return response.data;
+    },
+    
+    getUserById: async (id) => {
+        const response = await apiClient.get(`/users/${id}`);
+        return response.data;
+    },
+    
+    updateUser: async (id, userData) => {
+        const response = await apiClient.put(`/users/${id}`, userData);
+        return response.data;
+    },
+    
+    deleteUser: async (id) => {
+        const response = await apiClient.delete(`/users/${id}`);
+        return response.data;
+    },
+    
+    getProducts: async () => {
+        const response = await apiClient.get('/products');
+        return response.data;
+    },
+
+    getProductById: async (id) => {
+        const response = await apiClient.get(`/products/${id}`);
+        return response.data;
+    },
+
+    createProduct: async (product) => {
+        const response = await apiClient.post('/products', product);
+        return response.data;
+    },
+
+    updateProduct: async (id, product) => {
+        const response = await apiClient.put(`/products/${id}`, product);
+        return response.data;
+    },
+
+    deleteProduct: async (id) => {
+        const response = await apiClient.delete(`/products/${id}`);
+        return response.data;
+    }
+};
