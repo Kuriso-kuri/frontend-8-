@@ -25,7 +25,6 @@ app.use(cors({
 
 app.use(express.json());
 
-// Swagger configuration
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -73,7 +72,7 @@ function generateAccessToken(user) {
             email: user.email,
             first_name: user.first_name,
             last_name: user.last_name,
-            role: user.role || 'user'  // Добавляем роль в токен
+            role: user.role || 'user'
         },
         JWT_SECRET,
         {
@@ -496,13 +495,36 @@ app.post('/api/auth/login', async (req, res) => {
  * @swagger
  * /api/auth/refresh:
  *   post:
- *     summary: Обновление пары токенов (доступно всем)
+ *     summary: Обновление пары токенов
  *     tags: [Auth]
  *     requestBody:
  *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Refresh-токен, полученный при входе
  *     responses:
  *       200:
- *         description: Успешное обновление токенов
+ *         description: Новая пара токенов
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 accessToken:
+ *                   type: string
+ *                 refreshToken:
+ *                   type: string
+ *       400:
+ *         description: Отсутствует refreshToken
+ *       401:
+ *         description: Невалидный или просроченный refresh-токен
  */
 app.post('/api/auth/refresh', (req, res) => {
     const { refreshToken } = req.body;

@@ -11,6 +11,7 @@ const ProductsPage = () => {
     const [modalMode, setModalMode] = useState('create');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [user, setUser] = useState(null);
+    const [userRole, setUserRole] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +23,7 @@ const ProductsPage = () => {
         try {
             const userData = await api.getMe();
             setUser(userData);
+            setUserRole(userData.role);	
         } catch (error) {
             console.error('Ошибка получения пользователя:', error);
         }
@@ -92,6 +94,11 @@ const ProductsPage = () => {
                 {user && (
                     <div className="user-info">
                         <span>👤 {user.first_name} {user.last_name}</span>
+			{user.role === 'admin' && (
+           			 <button onClick={() => navigate('/admin/users')} className="admin-link">
+                				Управление пользователями
+            			 </button>
+        		)}
                         <button onClick={handleLogout} className="logout-button">
                             Выйти
                         </button>
@@ -99,9 +106,11 @@ const ProductsPage = () => {
                 )}
             </header>
             
-            <button onClick={handleCreate} className="create-button">
-                + Создать товар
-            </button>
+            {(user?.role === 'seller' || user?.role === 'admin') && (
+    		<button onClick={handleCreate} className="create-button">
+        		+ Создать товар
+    		</button>
+            )}
             
             <div className="products-grid">
                 {products.map(product => (
@@ -123,9 +132,13 @@ const ProductsPage = () => {
                             </div>
                         </div>
                         <div className="product-actions">
-                            <button onClick={() => handleEdit(product)}>✏️</button>
-                            <button onClick={() => handleDelete(product.id)}>🗑️</button>
-                        </div>
+    				{(userRole === 'seller' || userRole === 'admin') && (
+        				<button onClick={() => handleEdit(product)}>✏️</button>
+    				)}
+    				{userRole === 'admin' && (
+        				<button onClick={() => handleDelete(product.id)}>🗑️</button>
+    				)}
+			</div>
                     </div>
                 ))}
             </div>

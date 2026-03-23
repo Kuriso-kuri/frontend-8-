@@ -17,7 +17,6 @@ const LoginPage = () => {
 
         try {
             const response = await api.login({ email, password });
-            // Токены автоматически сохранятся в api.login
             navigate('/products');
         } catch (err) {
             setError(err.response?.data?.error || 'Ошибка при входе');
